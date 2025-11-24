@@ -26,7 +26,8 @@ site: {
     title: 'My Blog',              // Main heading on homepage
     subtitle: 'A collection...',   // Subtitle below heading
     description: 'This blog...',   // Footer description
-    pageTitle: 'My Awesome Blog'   // Browser tab title
+    pageTitle: 'My Awesome Blog',  // Browser tab title
+    baseUrl: 'https://example.com' // Base URL for RSS/Atom feeds
 }
 ```
 
@@ -36,9 +37,12 @@ site: {
     title: '我的博客',
     subtitle: '思考的记录，用<em>优雅</em>的方式呈现。',
     description: '这个博客追求简洁：快速、无障碍、干净。',
-    pageTitle: '我的精彩博客'
+    pageTitle: '我的精彩博客',
+    baseUrl: 'https://myblog.com'
 }
 ```
+
+⚠️ **Important**: Update `baseUrl` to your actual domain for RSS/Atom feeds to work correctly.
 
 ### 2. Homepage Settings (`config.homepage`)
 
@@ -232,3 +236,49 @@ If you want to add more customization options, you can:
 1. Add new fields to the `config` object
 2. Use them in the appropriate sections of `build.js`
 3. Rebuild with `npm run build`
+
+## RSS and Atom Feeds
+
+Plume automatically generates both RSS 2.0 and Atom 1.0 feeds for your blog:
+
+- **RSS Feed**: `/feed.xml` - Traditional RSS format supported by most feed readers
+- **Atom Feed**: `/atom.xml` - Modern Atom format with richer metadata
+
+### Setup
+
+1. **Set your blog's base URL** in `config.site.baseUrl`:
+   ```javascript
+   site: {
+       title: 'My Blog',
+       baseUrl: 'https://yourdomain.com'  // ← Change this to your domain
+   }
+   ```
+
+2. **Feed Discovery** is automatic - the following links are added to your blog's `<head>`:
+   ```html
+   <link rel="alternate" type="application/rss+xml" title="RSS Feed" href="/feed.xml">
+   <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/atom.xml">
+   ```
+
+3. **Feeds are generated automatically** when you run `npm run build`
+
+### Features
+
+- RSS feed includes article summaries (first 300 characters)
+- Atom feed includes full HTML content for each article
+- Both feeds include publication dates and tags
+- Only **active posts** are included (archived posts are excluded)
+- Feeds are updated every time you rebuild your blog
+
+### Subscribing to Your Blog
+
+Users can subscribe to your blog using:
+- Feed readers like Feedly, Inoreader, or their browser's built-in feed reader
+- The `/feed.xml` or `/atom.xml` URLs directly
+- RSS/Atom discovery via your blog's HTML meta tags
+
+### Testing Your Feeds
+
+Use online feed validators to check your feeds:
+- [W3C Feed Validator](https://validator.w3.org/feed/) - Validate RSS/Atom syntax
+- [FeedBurner](https://feedburner.google.com/) - Monitor feed usage

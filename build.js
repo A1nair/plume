@@ -16,7 +16,8 @@ const config = {
         title: 'Plume Blog',
         subtitle: 'A collection of thoughts, written with style.',
         description: 'Personal blog built with Plume - a lightweight static site generator',
-        pageTitle: 'Plume Blog' // Used in browser tab title
+        pageTitle: 'Plume Blog', // Used in browser tab title
+        baseUrl: 'https://example.com' // Base URL for RSS/Atom feeds - change to your domain
     },
     homepage: {
         heading: 'Recent Posts',
@@ -442,6 +443,116 @@ existingFiles.forEach(file => {
 if (deletedCount > 0) {
     console.log(`🧹 Cleaned up ${deletedCount} old file(s)`);
 }
+
+// ========================================
+// Generate RSS and Atom Feeds
+// ========================================
+
+// Helper function to escape XML special characters
+function escapeXml(str) {
+    if (!str) return '';
+    return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&apos;');
+}
+
+// Helper function to get post content (with HTML stripping for excerpt)
+function getPostExcerpt(filePath, isRss = true) {
+    const fileContent = fs.readFileSync(filePath, 'utf-8');
+    const { content } = matter(fileContent);
+    const htmlContent = md.render(content);
+    
+    if (isRss) {
+        // For RSS, return first 300 chars as excerpt
+        const plainText = htmlContent.replace(/<[^>]+>/g, '');
+        return escapeXml(plainText.substring(0, 300));
+    } else {
+        // For Atom, return escaped HTML content
+        return htmlContent;
+    }
+}
+
+// Generate RSS 2.0 Feed
+function generateRSSFeed() {
+    const baseUrl = config.site.baseUrl || 'https://example.com';
+    const rssItems = activePosts.map(post => {
+        const postPath = path.join(postsDir, post.url.replace('.html', '.md'));
+        const excerpt = getPostExcerpt(postPath, true);
+        const postDate = post.date.toUTCString();
+        
+        return `    <item>
+        <title>${escapeXml(post.title)}</title>
+        <link>${baseUrl}/${post.url}</link>
+        <guid isPermaLink="true">${baseUrl}/${post.url}</guid>
+        <pubDate>${postDate}</pubDate>
+        <description>${excerpt}</description>
+    </item>`;
+    }).join('\n');
+
+    const rssContent = `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+    <channel>
+        <title>${escapeXml(config.site.title)}</title>
+        <link>${baseUrl}</link>
+        <description>${escapeXml(config.site.description)}</description>
+        <language>en-us</language>
+        <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>
+        <docs>https://www.rssboard.org/rss-specification</docs>
+        <generator>Plume RSS Generator</generator>
+${rssItems}
+    </channel>
+</rss>`;
+
+    fs.writeFileSync(path.join(publicDir, 'feed.xml'), rssContent);
+    console.log('📡 RSS feed generated: feed.xml');
+}
+
+// Generate Atom 1.0 Feed
+function generateAtomFeed() {
+    const baseUrl = config.site.baseUrl || 'https://example.com';
+    const now = new Date().toISOString();
+    
+    const atomEntries = activePosts.map(post => {
+        const postPath = path.join(postsDir, post.url.replace('.html', '.md'));
+        const fileContent = fs.readFileSync(postPath, 'utf-8');
+        const { content } = matter(fileContent);
+        const htmlContent = md.render(content);
+        
+        return `    <entry>
+        <title>${escapeXml(post.title)}</title>
+        <link href="${baseUrl}/${post.url}" rel="alternate"/>
+        <id>urn:uuid:${baseUrl}/${post.url}</id>
+        <published>${post.date.toISOString()}</published>
+        <updated>${post.date.toISOString()}</updated>
+        <summary>${escapeXml(htmlContent.replace(/<[^>]+>/g, '').substring(0, 200))}</summary>
+        <content type="html"><![CDATA[${htmlContent}]]></content>
+    </entry>`;
+    }).join('\n');
+
+    const atomContent = `<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+    <title>${escapeXml(config.site.title)}</title>
+    <link href="${baseUrl}/" rel="alternate"/>
+    <link href="${baseUrl}/atom.xml" rel="self"/>
+    <id>urn:uuid:${baseUrl}</id>
+    <updated>${now}</updated>
+    <author>
+        <name>${escapeXml(config.site.title)}</name>
+    </author>
+    <subtitle>${escapeXml(config.site.description)}</subtitle>
+${atomEntries}
+</feed>`;
+
+    fs.writeFileSync(path.join(publicDir, 'atom.xml'), atomContent);
+    console.log('📡 Atom feed generated: atom.xml');
+}
+
+// Generate both feeds
+generateRSSFeed();
+generateAtomFeed();
 
 console.log(`✅ ${postsData.length} post(s) built successfully!`);
 console.log(`   📝 Active: ${activePosts.length} | 📦 Archived: ${archivedPosts.length}`);
